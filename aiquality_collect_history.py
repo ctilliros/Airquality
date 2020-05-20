@@ -26,7 +26,7 @@ def insert_values(pollutant_value, pollution_station_code, code_pol_id, update_i
     conn.commit()
 
 
-mysession = session.get('https://www.airquality.dli.mlsi.gov.cy/all_stations_data_range/2019-03-03%2000:00/2019-03-04%2000:00').json()
+mysession = session.get('https://www.airquality.dli.mlsi.gov.cy/all_stations_data_range/2019-01-01%2000:00/2019-12-31%2023:00').json()
 values_df = pd.DataFrame(columns={'station_code','code_pollutant','name_pollutant','datetime','date','time','value'})
 for i in range(0,len(mysession['data'])-7):
     station_id = i+1
