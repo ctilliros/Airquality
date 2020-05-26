@@ -16,9 +16,17 @@ else:
 cursor = conn.cursor()
 
 def insert_values(pollutant_value, pollution_station_code, code_pol_id, update_id):
-    sql_insert_values = 'insert into values(pollutant_value, id_stationFK, id_pollutantFK,id_updateFK) values(%s,%s,%s,%s)'
-    cursor.execute(sql_insert_values, (pollutant_value, pollution_station_code, code_pol_id, update_id))
-    conn.commit()
+    sql_check_for_in = 'select * from values where \
+        (pollutant_value = %s and id_stationFK = %s and id_pollutantFK = %s and id_updateFK = %s);'
+    cursor.execute(sql_check_for_in,(pollutant_value, pollution_station_code, code_pol_id, update_id))
+    row_count = cursor.rowcount
+    if row_count == 0:
+        print("Insert time: "+ str(datetime.now()))
+        sql_insert_values = 'insert into values(pollutant_value, id_stationFK, id_pollutantFK,id_updateFK) values(%s,%s,%s,%s)'
+        cursor.execute(sql_insert_values, (pollutant_value, pollution_station_code, code_pol_id, update_id))
+        conn.commit()
+    else:
+        print("No new data for insert for time" + str(datetime.now()))
 
 def parsedata(pollution_code, pollution_datetime,pollutant_value, pollution_station_code ):
     pollution_date = pollution_datetime.strftime("%Y-%m-%d")
@@ -40,7 +48,6 @@ def parsedata(pollution_code, pollution_datetime,pollutant_value, pollution_stat
     conn.commit()
     row_date_count = cursor.rowcount
     if row_date_count == 0:
-        print("Not")
         sql_insert_update = 'insert into update (date,time,datetime) values (%s,%s, %s);'
         cursor.execute(sql_insert_update, (pollution_date, pollution_time, pollution_datetime))
         conn.commit()
@@ -48,19 +55,17 @@ def parsedata(pollution_code, pollution_datetime,pollutant_value, pollution_stat
         cursor.execute(sql_update_id)
         update_id = cursor.fetchone()[0]
         conn.commit()
-        print(update_id)
         insert_values(pollutant_value,pollution_station_code,code_pol_id, update_id)
     else:
         sql_update_id = 'select update_id from update where datetime = %s;'
         cursor.execute(sql_update_id, (pollution_datetime,))
         update_id = cursor.fetchone()[0]
         conn.commit()
-        print(update_id)
         insert_values(pollutant_value, pollution_station_code, code_pol_id, update_id)
 
 ### Loop every 3600 seconds (one hour)
 tl = Timeloop()
-@tl.job(interval=timedelta(seconds=3600))
+@tl.job(interval=timedelta(seconds=600))
 def sample_job_every_1000s():
     dt = datetime.now()
     x = dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -71,7 +76,7 @@ def sample_job_every_1000s():
     try:
         conn = psycopg2.connect(host="localhost", database="testing", user="postgres", password="9664241907")
         if conn:
-            print('Success!')
+            print('Success! ' + str(datetime.now()))
         else:
             print('An error has occurred.')
         cursor = conn.cursor()
