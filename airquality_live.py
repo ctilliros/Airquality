@@ -7,6 +7,7 @@ from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError
 from datetime import datetime
 import psycopg2
+import sys 
 
 conn = psycopg2.connect(host="localhost", database="testing", user="postgres", password="9664241907")
 if conn:
@@ -80,37 +81,39 @@ def sample_job_every_1000s():
         else:
             print('An error has occurred.')
         cursor = conn.cursor()
+        try:
+            mysession = session.get('https://www.airquality.dli.mlsi.gov.cy/all_stations_data').json()
+            for i in range(0, len(mysession['data']) - 7):
+                station_id = i + 1
+                if (mysession['data']['station_{}'.format(station_id)]['name_en'] == 'Nicosia - Traffic Station'):
+                    pollution_station_code = 1
+                    pollutants_values = mysession['data']['station_{}'.format(station_id)]['pollutants']
+                    for key, value in pollutants_values.items():
+                        if 'date_time' in key:
+                            pollution_datetime = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+                        else:
+                            for key2, value in pollutants_values[key].items():
+                                if 'code' in key2:
+                                    pollution_code = value
+                                elif 'value' in key2:
+                                    pollutant_value = value
+                            parsedata(pollution_code, pollution_datetime, pollutant_value, pollution_station_code)
 
-        mysession = session.get('https://www.airquality.dli.mlsi.gov.cy/all_stations_data').json()
-        for i in range(0, len(mysession['data']) - 7):
-            station_id = i + 1
-            if (mysession['data']['station_{}'.format(station_id)]['name_en'] == 'Nicosia - Traffic Station'):
-                pollution_station_code = 1
-                pollutants_values = mysession['data']['station_{}'.format(station_id)]['pollutants']
-                for key, value in pollutants_values.items():
-                    if 'date_time' in key:
-                        pollution_datetime = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
-                    else:
-                        for key2, value in pollutants_values[key].items():
-                            if 'code' in key2:
-                                pollution_code = value
-                            elif 'value' in key2:
-                                pollutant_value = value
-                        parsedata(pollution_code, pollution_datetime, pollutant_value, pollution_station_code)
-
-            if (mysession['data']['station_{}'.format(station_id)]['name_en'] == 'Nicosia - Residential Station '):
-                pollution_station_code = 2
-                pollutants_values = mysession['data']['station_{}'.format(station_id)]['pollutants']
-                for key, value in pollutants_values.items():
-                    if 'date_time' in key:
-                        pollution_datetime = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
-                    else:
-                        for key2, value in pollutants_values[key].items():
-                            if 'code' in key2:
-                                pollution_code = value
-                            elif 'value' in key2:
-                                pollutant_value = value
-                        parsedata(pollution_code, pollution_datetime, pollutant_value, pollution_station_code)
+                if (mysession['data']['station_{}'.format(station_id)]['name_en'] == 'Nicosia - Residential Station '):
+                    pollution_station_code = 2
+                    pollutants_values = mysession['data']['station_{}'.format(station_id)]['pollutants']
+                    for key, value in pollutants_values.items():
+                        if 'date_time' in key:
+                            pollution_datetime = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+                        else:
+                            for key2, value in pollutants_values[key].items():
+                                if 'code' in key2:
+                                    pollution_code = value
+                                elif 'value' in key2:
+                                    pollutant_value = value
+                            parsedata(pollution_code, pollution_datetime, pollutant_value, pollution_station_code)
+        except:
+            sys.stderr.write("Could not connect for colletion of data")
     except ConnectionError as ce:
         print(ce)
 
