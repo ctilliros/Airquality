@@ -9,7 +9,7 @@ from datetime import datetime
 import psycopg2
 import sys 
 
-conn = psycopg2.connect(host="localhost", database="testing", user="postgres", password="9664241907")
+conn = psycopg2.connect(host="localhost", options='-c statement_timeout=1000', database="testing", user="postgres", password="9664241907")
 if conn:
     print('Success!')
 else:
