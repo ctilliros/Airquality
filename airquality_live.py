@@ -9,7 +9,7 @@ from datetime import datetime
 import psycopg2
 import sys 
 
-conn = psycopg2.connect(host="localhost", options='-c statement_timeout=1000', database="testing", user="postgres", password="9664241907")
+conn = psycopg2.connect(host="localhost", options='-c statement_timeout=30s', database="testing", user="postgres", password="9664241907")
 if conn:
     print('Success!')
 else:
@@ -66,7 +66,7 @@ def parsedata(pollution_code, pollution_datetime,pollutant_value, pollution_stat
 
 ### Loop every 3600 seconds (one hour)
 tl = Timeloop()
-@tl.job(interval=timedelta(seconds=600))
+@tl.job(interval=timedelta(seconds=10))
 def sample_job_every_1000s():
     dt = datetime.now()
     x = dt.strftime("%Y-%m-%d %H:%M:%S")
