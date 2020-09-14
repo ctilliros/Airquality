@@ -1,8 +1,9 @@
-CREATE TABLE pollutants
+CREATE TABLE IF NOT EXISTS pollutants
 (
     pollutants_id SERIAL NOT NULL,
     name_pollutant character varying(8) COLLATE pg_catalog."default",
-    code_pollutant integer NOT NULL,
+    code_pollutant integer,
+    UNIQUE(name_pollutant),
     CONSTRAINT "Pollutants_pkey" PRIMARY KEY (pollutants_id)
 );
 
@@ -17,16 +18,13 @@ INSERT INTO pollutants(
     (6,'CO'),
     (7,'C6H6'),
     (8,'NO'),
-    (9,'PM2.5');
-
-/* Κάνει αντικατάσταση και του γράμματος x ενώ δεν πρέπει.
-SELECT pollutants_id,   regexp_replace(translate(regexp_replace(name_pollutant, '<.*?>', '', 'g'), '0123456789.', '₀₁₂₃₄₅₆₇₈₉.'), 'x(e[urs]|[^e]|$)', 'ₓ\1', 'ig')
-    FROM public.pollutants; */
+    (9,'PM2.5') 
+    ON CONFLICT (name_pollutant) DO NOTHING ;
 
 SELECT pollutants_id,   translate(regexp_replace(name_pollutant, '<.*?>', '', 'g'), '0123456789.', '₀₁₂₃₄₅₆₇₈₉.') 
     FROM public.pollutants;
 
-CREATE TABLE stations
+CREATE TABLE IF NOT EXISTS  stations
 (
     station_id integer NOT NULL,
     station_name_en character varying(45) COLLATE pg_catalog."default" NOT NULL,
@@ -34,18 +32,17 @@ CREATE TABLE stations
     latitude double precision NOT NULL,
     longitude double precision NOT NULL,
     geometry character varying(145) COLLATE pg_catalog."default" NOT NULL,
+    UNIQUE(station_name_en),
     CONSTRAINT "Station_pkey" PRIMARY KEY (station_id)
 );
-
-/*ALTER TABLE stations ALTER COLUMN geom TYPE GEOMETRY(POINT,4326);*/
 
 
 insert into stations values (1, 'Nicosia - Traffic Station', 'Λευκωσία - Κυκλοφοριακός Σταθμός',
    '35.15192246950294', '33.347919957077806','POINT(35.15192246950294,33.347919957077806)'),
 (2, 'Nicosia - Residential Station', 'Λευκωσία - Οικιστικός Σταθμός',
-   '35.1269444', '33.33166670000003','POINT(35.1269444,33.33166670000003)');
+   '35.1269444', '33.33166670000003','POINT(35.1269444,33.33166670000003)') ON CONFLICT (station_name_en) DO NOTHING ;
 
-CREATE TABLE update
+CREATE TABLE IF NOT EXISTS  update
 (
     update_id SERIAL NOT NULL,
     date date NOT NULL,
@@ -54,9 +51,8 @@ CREATE TABLE update
     CONSTRAINT "Update_pkey" PRIMARY KEY (update_id)
 );
 
-/* https://dba.stackexchange.com/questions/217593/drop-table-taking-too-long */
 
-CREATE TABLE values (
+CREATE TABLE IF NOT EXISTS  values (
     id_value SERIAL NOT NULL,
     pollutant_value double precision,
     id_stationFK integer,

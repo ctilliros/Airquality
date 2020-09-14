@@ -8,13 +8,65 @@ from requests.exceptions import ConnectionError
 from datetime import datetime
 import psycopg2
 import sys 
-
-conn = psycopg2.connect(host="localhost", options='-c statement_timeout=30s', database="testing", user="postgres", password="9664241907")
+conn = psycopg2.connect(host="postgres", options='-c statement_timeout=30s', port=5432, dbname="inicosia", user="admin", password="secret")
+# conn = psycopg2.connect(host="localhost", options='-c statement_timeout=30s', port=5432, database="testing", user="postgres", password="9664241907")
 if conn:
     print('Success!')
 else:
     print('An error has occurred.')
 cursor = conn.cursor()
+
+def create_tables():
+    sql = 'CREATE TABLE IF NOT EXISTS pollutants(pollutants_id SERIAL NOT NULL,\
+    name_pollutant character varying(8) COLLATE pg_catalog."default",code_pollutant \
+    integer,UNIQUE(name_pollutant),CONSTRAINT "Pollutants_pkey" PRIMARY KEY (pollutants_id));'
+    cursor.execute(sql,)
+    conn.commit()
+
+
+    # sql = "INSERT INTO pollutants(pollutants_id, name_pollutant) VALUES (1,'SO2'),(2,'PM18'),\
+    #     (3,'O3'),(4,'NO2'),(5,'NOx'),(6,'CO'),(7,'C6H6'),(8,'NO'),(9,'PM2.5') \
+    #     ON CONFLICT (name_pollutant) DO NOTHING ;"
+    
+    # cursor.execute(sql,)
+    # conn.commit()
+
+    # sql = "SELECT pollutants_id,   translate(regexp_replace(name_pollutant, '<.*?>', '', 'g'), '0123456789.', '₀₁₂₃₄₅₆₇₈₉.') \
+    #     FROM public.pollutants;"    
+    # cursor.execute(sql,)
+    # conn.commit()
+    
+    sql = 'CREATE TABLE IF NOT EXISTS  stations(station_id integer NOT NULL,station_name_en \
+    character varying(45) COLLATE pg_catalog."default" NOT NULL,\
+        station_name_gr character varying(45) COLLATE pg_catalog."default" NOT NULL,\
+        latitude double precision NOT NULL,longitude double precision NOT NULL, \
+        geometry character varying(145) COLLATE pg_catalog."default" NOT NULL, \
+        UNIQUE(station_name_en),CONSTRAINT "Station_pkey" PRIMARY KEY (station_id));'
+    cursor.execute(sql,)
+    conn.commit()
+    
+
+    sql = "insert into stations values (1, 'Nicosia - Traffic Station', 'Λευκωσία - Κυκλοφοριακός Σταθμός',\
+       '35.15192246950294', '33.347919957077806','POINT(35.15192246950294,33.347919957077806)'),\
+    (2, 'Nicosia - Residential Station', 'Λευκωσία - Οικιστικός Σταθμός',\
+       '35.1269444', '33.33166670000003','POINT(35.1269444,33.33166670000003)') ON CONFLICT (station_name_en) DO NOTHING ;"
+    cursor.execute(sql,)
+    conn.commit()
+    
+    sql = 'CREATE TABLE IF NOT EXISTS  update (update_id SERIAL NOT NULL,date date NOT NULL,\
+        "time" time without time zone NOT NULL,datetime timestamp without time zone,\
+        CONSTRAINT "Update_pkey" PRIMARY KEY (update_id));'
+    cursor.execute(sql,)
+    conn.commit()
+    
+
+    sql = 'CREATE TABLE IF NOT EXISTS  values (id_value SERIAL NOT NULL,pollutant_value double precision,\
+        id_stationFK integer,id_pollutantFK integer,id_updateFK integer,CONSTRAINT "Value_pkey" PRIMARY KEY (id_value,id_stationFK),\
+        FOREIGN KEY (id_stationFK) REFERENCES stations (station_id),\
+        FOREIGN KEY (id_pollutantFK) REFERENCES pollutants (pollutants_id),FOREIGN KEY (id_updateFK) REFERENCES update (update_id));'
+    cursor.execute(sql,)
+    conn.commit()
+    
 
 def insert_values(pollutant_value, pollution_station_code, code_pol_id, update_id):
     sql_check_for_in = 'select * from values where \
@@ -29,20 +81,26 @@ def insert_values(pollutant_value, pollution_station_code, code_pol_id, update_i
     else:
         print("No new data for insert for time" + str(datetime.now()))
 
-def parsedata(pollution_code, pollution_datetime,pollutant_value, pollution_station_code ):
+def parsedata(pollution_code, pollution_datetime,pollutant_value, pollution_station_code, pollutant_name ):
     pollution_date = pollution_datetime.strftime("%Y-%m-%d")
-    pollution_time = pollution_datetime.strftime("%H:%M:%S")
+    pollution_time = pollution_datetime.strftime("%H:%M:%S")    
     sql_code_pol_id = 'select pollutants_id from pollutants where code_pollutant = %s'
     cursor.execute(sql_code_pol_id, (pollution_code,))
-    code_pol_id = cursor.fetchone()[0]
+    code_pol_id = cursor.fetchone()
     row_count = cursor.rowcount
     if row_count == 0:
         sql_insert_pollutants = 'insert into pollutants (name_pollutant, code_pollutant) values (%s, %s);'
-        cursor.execute(sql_insert_pollutants, (code_pollutions, elem,))
+        cursor.execute(sql_insert_pollutants, (pollutant_name, pollution_code,))
+        conn.commit()
+        sql = "SELECT pollutants_id,   translate(regexp_replace(name_pollutant, '<.*?>', '', 'g'), '0123456789.', '₀₁₂₃₄₅₆₇₈₉.') \
+        FROM public.pollutants;"    
+        cursor.execute(sql,)
         conn.commit()
         sql_code_pol_id = 'select pollutants_id from pollutants where code_pollutant = %s'
         cursor.execute(sql_code_pol_id, (pollution_code,))
         code_pol_id = cursor.fetchone()[0]
+    # else:
+    #     code_pol_id =cursor.fetchone()[0]
 
     sql_date = 'select datetime, date from update where datetime = %s;'
     cursor.execute(sql_date, (pollution_datetime,))
@@ -67,7 +125,7 @@ def parsedata(pollution_code, pollution_datetime,pollutant_value, pollution_stat
 ### Loop every 3600 seconds (one hour)
 tl = Timeloop()
 @tl.job(interval=timedelta(seconds=10))
-def sample_job_every_1000s():
+def sample_job_every_1000s():    
     dt = datetime.now()
     x = dt.strftime("%Y-%m-%d %H:%M:%S")
     clear_output(wait=False)
@@ -75,16 +133,17 @@ def sample_job_every_1000s():
     date = dt.strftime("%Y-%m-%d")
     time = dt.strftime("%H:%M:%S")
     try:
-        conn = psycopg2.connect(host="localhost", database="testing", user="postgres", password="9664241907")
+        conn = psycopg2.connect(host="postgres", options='-c statement_timeout=30s', port=5432, dbname="inicosia", user="admin", password="secret")
+        # conn = psycopg2.connect(host="localhost", options='-c statement_timeout=30s', port=5432, database="testing", user="postgres", password="9664241907")
         if conn:
             print('Success! ' + str(datetime.now()))
         else:
             print('An error has occurred.')
         cursor = conn.cursor()
-        try:
-            mysession = session.get('https://www.airquality.dli.mlsi.gov.cy/all_stations_data').json()
+        try:            
+            mysession = session.get('https://www.airquality.dli.mlsi.gov.cy/all_stations_data').json()            
             for i in range(0, len(mysession['data']) - 7):
-                station_id = i + 1
+                station_id = i + 1                
                 if (mysession['data']['station_{}'.format(station_id)]['name_en'] == 'Nicosia - Traffic Station'):
                     pollution_station_code = 1
                     pollutants_values = mysession['data']['station_{}'.format(station_id)]['pollutants']
@@ -96,8 +155,10 @@ def sample_job_every_1000s():
                                 if 'code' in key2:
                                     pollution_code = value
                                 elif 'value' in key2:
-                                    pollutant_value = value
-                            parsedata(pollution_code, pollution_datetime, pollutant_value, pollution_station_code)
+                                    pollutant_value = value                            
+                                elif 'notation' in key2:
+                                    pollutant_name = value                                
+                            parsedata(pollution_code, pollution_datetime, pollutant_value, pollution_station_code,pollutant_name)
 
                 if (mysession['data']['station_{}'.format(station_id)]['name_en'] == 'Nicosia - Residential Station '):
                     pollution_station_code = 2
@@ -111,11 +172,20 @@ def sample_job_every_1000s():
                                     pollution_code = value
                                 elif 'value' in key2:
                                     pollutant_value = value
-                            parsedata(pollution_code, pollution_datetime, pollutant_value, pollution_station_code)
-        except:
-            sys.stderr.write("Could not connect for colletion of data")
+                                elif 'notation' in key2:
+                                    pollutant_name = value                                    
+                            parsedata(pollution_code, pollution_datetime, pollutant_value, pollution_station_code,pollutant_name)
+        except ConnectionError as ce:
+            # sys.stderr.write("Could not connect for colletion of data")
+            print(ce)
     except ConnectionError as ce:
         print(ce)
 
-if __name__ == "__main__":
+if __name__ == "__main__":    
+    # Open and read the file as a single buffer
+    # fd = open('airquality.sql', 'r')
+    # sqlFile = fd.read()
+    # cursor.execute(sqlFile)  
+    # fd.close()    
+    create_tables()
     tl.start(block=True)
