@@ -124,7 +124,7 @@ def parsedata(pollution_code, pollution_datetime,pollutant_value, pollution_stat
 
 ### Loop every 3600 seconds (one hour)
 tl = Timeloop()
-@tl.job(interval=timedelta(seconds=10))
+@tl.job(interval=timedelta(seconds=3600))
 def sample_job_every_1000s():    
     dt = datetime.now()
     x = dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -178,6 +178,7 @@ def sample_job_every_1000s():
         except ConnectionError as ce:
             # sys.stderr.write("Could not connect for colletion of data")
             print(ce)
+            sys.exit(1)
     except ConnectionError as ce:
         print(ce)
 
