@@ -8,8 +8,8 @@ from requests.exceptions import ConnectionError
 from datetime import datetime
 import psycopg2
 import sys 
-conn = psycopg2.connect(host="postgres", options='-c statement_timeout=30s', port=5432, dbname="inicosia", user="admin", password="secret")
-# conn = psycopg2.connect(host="localhost", options='-c statement_timeout=30s', port=5432, database="testing", user="postgres", password="9664241907")
+# conn = psycopg2.connect(host="postgres", options='-c statement_timeout=30s', port=5432, dbname="inicosia", user="admin", password="secret")
+conn = psycopg2.connect(host="localhost", options='-c statement_timeout=30s', port=5432, database="testing", user="postgres", password="9664241907")
 if conn:
     print('Success!')
 else:
@@ -31,10 +31,10 @@ def create_tables():
     # cursor.execute(sql,)
     # conn.commit()
 
-    # sql = "SELECT pollutants_id,   translate(regexp_replace(name_pollutant, '<.*?>', '', 'g'), '0123456789.', '₀₁₂₃₄₅₆₇₈₉.') \
-    #     FROM public.pollutants;"    
-    # cursor.execute(sql,)
-    # conn.commit()
+    sql = "SELECT pollutants_id,   translate(regexp_replace(name_pollutant, '<.*?>', '', 'g'), '0123456789.', '₀₁₂₃₄₅₆₇₈₉.') \
+        FROM public.pollutants;"    
+    cursor.execute(sql,)
+    conn.commit()
     
     sql = 'CREATE TABLE IF NOT EXISTS  stations(station_id integer NOT NULL,station_name_en \
     character varying(45) COLLATE pg_catalog."default" NOT NULL,\
@@ -124,7 +124,7 @@ def parsedata(pollution_code, pollution_datetime,pollutant_value, pollution_stat
 
 ### Loop every 3600 seconds (one hour)
 tl = Timeloop()
-@tl.job(interval=timedelta(seconds=3600))
+@tl.job(interval=timedelta(seconds=30))
 def sample_job_every_1000s():    
     dt = datetime.now()
     x = dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -133,8 +133,8 @@ def sample_job_every_1000s():
     date = dt.strftime("%Y-%m-%d")
     time = dt.strftime("%H:%M:%S")
     try:
-        conn = psycopg2.connect(host="postgres", options='-c statement_timeout=30s', port=5432, dbname="inicosia", user="admin", password="secret")
-        # conn = psycopg2.connect(host="localhost", options='-c statement_timeout=30s', port=5432, database="testing", user="postgres", password="9664241907")
+        # conn = psycopg2.connect(host="postgres", options='-c statement_timeout=30s', port=5432, dbname="inicosia", user="admin", password="secret")
+        conn = psycopg2.connect(host="localhost", options='-c statement_timeout=30s', port=5432, database="testing", user="postgres", password="9664241907")
         if conn:
             print('Success! ' + str(datetime.now()))
         else:
@@ -181,12 +181,14 @@ def sample_job_every_1000s():
             sys.exit(1)
     except ConnectionError as ce:
         print(ce)
+        sys.exit(1)
 
 if __name__ == "__main__":    
     # Open and read the file as a single buffer
     # fd = open('airquality.sql', 'r')
     # sqlFile = fd.read()
     # cursor.execute(sqlFile)  
+    # conn.commit()
     # fd.close()    
     create_tables()
     tl.start(block=True)
